@@ -6,7 +6,7 @@ import numpy as np
 data = keras.datasets.imdb
 
 # Load imdb data set with top 10,000 most frequent words
-(train_data, train_labels), (test_data, test_labels) = data.load_data(num_words=10000)
+(train_data, train_labels), (test_data, test_labels) = data.load_data(num_words=88000)
 
 # creates tuples
 word_index = data.get_word_index()
@@ -31,16 +31,18 @@ train_data = keras_preprocessing.sequence.pad_sequences(train_data, value=word_i
 test_data = keras_preprocessing.sequence.pad_sequences(test_data, value=word_index["<PAD>"], padding="post", maxlen=250)
 
 
-
 # Convert numerical indices back to words using the reversed word index
 def decode_review(text):
     return " ".join([reversed_word_index.get(i, "?") for i in text])
 
+
+# Used to create and save model
+"""
 # Model down here
 model = keras.Sequential()
 
 # Embedding layer turns each element in the input array into separate vectors
-model.add(keras.layers.Embedding(10000,16))
+model.add(keras.layers.Embedding(88000, 16))
 
 # Used to reduce the dimensions
 model.add(keras.layers.GlobalAvgPool1D())
@@ -61,13 +63,35 @@ results = model.evaluate(test_data, test_labels)
 
 print(results)
 
-# Takes first element in test data
-test_review = test_data[0]
+model.save("model.h5")
+"""
 
-# Add an extra dimension to make it a sequence
-test_review = np.expand_dims(test_review, axis=0)
 
-predict = model.predict([test_review])
-print("Review: ")
+def review_encode(s):
+    # Add start tag
+    encoded = [1]
+
+    for word in s:
+        # Add embedded word to list
+        if word in word_index:
+            encoded.append(word_index[word.lower()])
+        # If word is not in vocabulary, add unknown tag
+        else:
+            encoded.append(2)
+    return encoded
+
+
+# Load model
+model = keras.models.load_model("model.h5")
+
+with open("test.txt", encoding="utf-8") as f:
+    for line in f.readlines():
+        nline = line.replace(",", "").replace(".", "").replace("(", "").replace(")", "").replace(":", "").replace("\"","").strip().split(" ")
+        encode = review_encode(nline)
+        encode = keras.preprocessing.sequence.pad_sequences([encode], value=word_index["<PAD>"], padding="post", maxlen=250) # make the data 250 words long
+        predict = model.predict(encode)
+        print(line)
+        print(encode)
+        print(predict[0])
 
 
